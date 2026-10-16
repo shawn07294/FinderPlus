@@ -1,50 +1,27 @@
-# FinderPlus source project
+# FinderPlus
 
-FinderPlus is a native macOS file explorer built with Swift and SwiftUI.
+A native macOS file explorer built with Swift and SwiftUI, with scoped live search, list and icon views, Quick Look previews, drag and drop, and common file operations.
 
-## Requirements
+## Downloads
 
-- macOS 14 or later
-- Swift 5.9 or later, included with Xcode or the Xcode Command Line Tools
+- [Prebuilt macOS app (Apple Silicon)](FinderPlus-macOS-arm64.zip)
+- [Source project](FinderPlus-source.zip)
 
-## Run and package
+The prebuilt app is ad hoc signed and not notarized, so macOS may ask you to confirm opening it. It targets Apple Silicon (arm64). The source project can be built for Intel or Apple Silicon.
+
+## Build
+
+Requires macOS 14 or later and Swift 5.9 or later (included with Xcode or the Xcode Command Line Tools). Download and extract `FinderPlus-source.zip`, then run:
 
 ```sh
 swift run
 ```
 
-To create a standalone app bundle in `build/FinderPlus.app`:
+To package a standalone app:
 
 ```sh
 ./bundle.sh
 open build/FinderPlus.app
 ```
 
-## Features
-
-- Search the selected folder, its subfolders, or user files across the Mac.
-- Search file names or file contents with contains, exact-match, or regular-expression matching.
-- Filter by kind, modification date, and size; optionally include hidden files or match case.
-- Switch between sortable list and icon views.
-- Browse Home, Desktop, Documents, Downloads, Applications, Macintosh HD, and mounted volumes.
-- Preview with Quick Look, navigate with breadcrumbs, and drag and drop files.
-- Open, reveal, duplicate, rename, copy paths, move to Trash, and create folders.
-
-## Keyboard shortcuts
-
-| Shortcut | Action |
-| --- | --- |
-| Space | Quick Look preview for selected file |
-| ⌘ F | Focus search and reveal filters |
-| ⌘ ↑ | Go to parent folder |
-| ⌘ ↓ | Open selected folder or file |
-| ⌘ ⇧ N | Create a folder |
-| ⌘ [ / ⌘ ] | Back / forward |
-| ⌘ ⇧ H | Go to Home |
-| ⌘ ⇧ A | Go to Applications |
-| ⌘ ⇧ D | Go to Desktop |
-| ⌘ ⇧ O | Go to Documents |
-
-## License
-
-GNU General Public License v3.0. See `LICENSE` in the repository.
+See the source archive's README for features and keyboard shortcuts. FinderPlus is distributed under GPL-3.0; see [LICENSE](LICENSE).

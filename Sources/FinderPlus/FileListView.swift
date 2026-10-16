@@ -12,27 +12,27 @@ public struct FileListView: View {
             // Table Header
             HStack(spacing: 0) {
                 headerButton(title: "Name", field: .name)
-                    .frame(minWidth: 220, alignment: .leading)
+                    .frame(minWidth: max(180, 220 * viewModel.appScale), alignment: .leading)
 
                 Divider()
 
                 headerButton(title: "Date Modified", field: .dateModified)
-                    .frame(width: 160, alignment: .leading)
+                    .frame(width: max(130, 160 * viewModel.appScale), alignment: .leading)
 
                 Divider()
 
                 headerButton(title: "Size", field: .size)
-                    .frame(width: 100, alignment: .trailing)
+                    .frame(width: max(80, 100 * viewModel.appScale), alignment: .trailing)
 
                 Divider()
 
                 headerButton(title: "Kind", field: .kind)
-                    .frame(width: 140, alignment: .leading)
+                    .frame(width: max(110, 140 * viewModel.appScale), alignment: .leading)
             }
-            .font(.caption.weight(.medium))
+            .font(.system(size: 11 * viewModel.appScale, weight: .medium))
             .foregroundColor(.secondary)
             .padding(.horizontal, 16)
-            .frame(height: 26)
+            .frame(height: max(22, 26 * viewModel.appScale))
             .background(Color(NSColor.controlBackgroundColor))
 
             Divider()
@@ -158,6 +158,7 @@ private struct FileListRow: View {
                         .opacity(isDraggingThisItem ? 0.45 : 1.0)
 
                     Text(item.name)
+                        .font(.system(size: 13 * viewModel.appScale))
                         .lineLimit(1)
                         .truncationMode(.middle)
                         .foregroundColor(isSelected ? .white : (item.isHidden ? .secondary : .primary))
@@ -168,7 +169,7 @@ private struct FileListRow: View {
                     HStack(spacing: 8) {
                         FileThumbnailView(item: item, size: iconSize)
                         Text(item.name)
-                            .font(.caption)
+                            .font(.system(size: 11 * viewModel.appScale))
                             .lineLimit(1)
                     }
                     .padding(.horizontal, 6)
@@ -183,28 +184,28 @@ private struct FileListRow: View {
 
                 Spacer(minLength: 0)
             }
-            .frame(minWidth: 220, alignment: .leading)
+            .frame(minWidth: max(180, 220 * viewModel.appScale), alignment: .leading)
 
             // Date Modified
             Text(item.formattedDate)
-                .font(.caption)
+                .font(.system(size: 11 * viewModel.appScale))
                 .foregroundColor(isSelected ? .white.opacity(0.9) : .secondary)
                 .opacity(isDraggingThisItem ? 0.45 : 1.0)
-                .frame(width: 160, alignment: .leading)
+                .frame(width: max(130, 160 * viewModel.appScale), alignment: .leading)
 
             // Size
             Text(item.formattedSize)
-                .font(.caption)
+                .font(.system(size: 11 * viewModel.appScale))
                 .foregroundColor(isSelected ? .white.opacity(0.9) : .secondary)
                 .opacity(isDraggingThisItem ? 0.45 : 1.0)
-                .frame(width: 100, alignment: .trailing)
+                .frame(width: max(80, 100 * viewModel.appScale), alignment: .trailing)
 
             // Kind
             Text(item.kindDescription)
-                .font(.caption)
+                .font(.system(size: 11 * viewModel.appScale))
                 .foregroundColor(isSelected ? .white.opacity(0.9) : .secondary)
                 .opacity(isDraggingThisItem ? 0.45 : 1.0)
-                .frame(width: 140, alignment: .leading)
+                .frame(width: max(110, 140 * viewModel.appScale), alignment: .leading)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, max(3, 5 * viewModel.iconScale))

@@ -42,12 +42,14 @@ public struct MainContentView: View {
             ToolbarItemGroup(placement: .navigation) {
                 Button(action: { viewModel.goBack() }) {
                     Image(systemName: "chevron.left")
+                        .font(.system(size: 13 * viewModel.appScale))
                 }
                 .disabled(!viewModel.canGoBack)
                 .help("Back")
 
                 Button(action: { viewModel.goForward() }) {
                     Image(systemName: "chevron.right")
+                        .font(.system(size: 13 * viewModel.appScale))
                 }
                 .disabled(!viewModel.canGoForward)
                 .help("Forward")
@@ -57,14 +59,14 @@ public struct MainContentView: View {
             ToolbarItemGroup(placement: .principal) {
                 HStack(spacing: 12) {
                     Text(viewModel.currentDirectory.lastPathComponent.isEmpty ? "Macintosh HD" : viewModel.currentDirectory.lastPathComponent)
-                        .font(.headline)
+                        .font(.system(size: 14 * viewModel.appScale, weight: .semibold))
 
                     Picker("View Mode", selection: $viewModel.viewMode) {
                         Image(systemName: "square.grid.2x2").tag(ViewMode.icons)
                         Image(systemName: "list.bullet").tag(ViewMode.list)
                     }
                     .pickerStyle(.segmented)
-                    .frame(width: 80)
+                    .frame(width: max(75, 80 * viewModel.appScale))
                 }
             }
 
@@ -224,7 +226,7 @@ public struct MainContentView: View {
                 viewModel.navigateTo(url: url)
             }
         }
-        .scaleEffect(viewModel.appScale)
+        .controlSize(viewModel.controlSize)
     }
 
     private var emptyStateView: some View {

@@ -28,41 +28,41 @@ public struct BottomBarView: View {
                 Spacer(minLength: 12)
 
                 // Status Bar Stats
-                HStack(spacing: 8) {
+                HStack(spacing: 8 * viewModel.appScale) {
                     if viewModel.isSearchActive {
                         Text("\(viewModel.searchResults.count) \(viewModel.searchResults.count == 1 ? "item" : "items")")
-                            .font(.caption)
+                            .font(.system(size: 11 * viewModel.appScale))
                             .foregroundColor(.secondary)
                     } else {
                         let total = viewModel.folderItems.count
                         let selected = viewModel.selectedItemIDs.count
                         let text = selected > 0 ? "\(selected) of \(total) selected" : "\(total) \(total == 1 ? "item" : "items")"
                         Text(text)
-                            .font(.caption)
+                            .font(.system(size: 11 * viewModel.appScale))
                             .foregroundColor(.secondary)
                     }
 
                     if !viewModel.volumeFreeSpaceString.isEmpty {
                         Text("•")
-                            .font(.caption)
+                            .font(.system(size: 11 * viewModel.appScale))
                             .foregroundColor(.secondary)
                         Text(viewModel.volumeFreeSpaceString)
-                            .font(.caption)
+                            .font(.system(size: 11 * viewModel.appScale))
                             .foregroundColor(.secondary)
                     }
 
                     if viewModel.iconScale != 1.0 || viewModel.appScale != 1.0 {
                         Text("•")
-                            .font(.caption)
+                            .font(.system(size: 10 * viewModel.appScale))
                             .foregroundColor(.secondary)
-                        Text("Icon: \(Int(round(viewModel.iconScale * 100)))% • App: \(Int(round(viewModel.appScale * 100)))%")
-                            .font(.caption2)
+                        Text("Icon: \(Int(round(viewModel.iconScale * 100)))% • UI: \(Int(round(viewModel.appScale * 100)))%")
+                            .font(.system(size: 10 * viewModel.appScale))
                             .foregroundColor(.secondary)
                     }
                 }
                 .padding(.trailing, 16)
             }
-            .frame(height: 28)
+            .frame(height: max(24, 28 * viewModel.appScale))
             .background(Color(NSColor.windowBackgroundColor))
         }
     }
@@ -87,18 +87,18 @@ private struct BreadcrumbElement: View {
         Button(action: {
             viewModel.navigateTo(url: url)
         }) {
-            HStack(spacing: 4) {
+            HStack(spacing: 4 * viewModel.appScale) {
                 Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 14, height: 14)
+                    .frame(width: 14 * viewModel.appScale, height: 14 * viewModel.appScale)
 
                 Text(title)
-                    .font(.caption)
+                    .font(.system(size: 11 * viewModel.appScale))
                     .foregroundColor(isCurrentDirectory ? .primary : .secondary)
             }
-            .padding(.horizontal, 4)
-            .padding(.vertical, 2)
+            .padding(.horizontal, max(3, 4 * viewModel.appScale))
+            .padding(.vertical, max(1, 2 * viewModel.appScale))
             .background(
                 isTargeted
                     ? Color.accentColor.opacity(0.35)

@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 echo "==> Building FinderPlus (Release)..."
-swift build -c release
+DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer" swift build -c release
 
 APP_NAME="FinderPlus.app"
 APP_DIR="./build/$APP_NAME"

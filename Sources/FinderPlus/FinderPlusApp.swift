@@ -35,12 +35,12 @@ struct FinderPlusApp: App {
 
                 Divider()
 
-                Button("Increase App Scale") {
+                Button("Zoom In Menu & UI") {
                     NotificationCenter.default.post(name: .increaseAppScaleTriggered, object: nil)
                 }
                 .keyboardShortcut("]", modifiers: [.command])
 
-                Button("Decrease App Scale") {
+                Button("Zoom Out Menu & UI") {
                     NotificationCenter.default.post(name: .decreaseAppScaleTriggered, object: nil)
                 }
                 .keyboardShortcut("[", modifiers: [.command])

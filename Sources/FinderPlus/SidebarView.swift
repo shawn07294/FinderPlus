@@ -72,7 +72,11 @@ public struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
-        .frame(minWidth: 180, idealWidth: 200, maxWidth: 260)
+        .frame(
+            minWidth: max(160, 180 * viewModel.appScale),
+            idealWidth: max(180, 200 * viewModel.appScale),
+            maxWidth: max(240, 280 * viewModel.appScale)
+        )
     }
 }
 
@@ -85,16 +89,17 @@ private struct SidebarRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: 8 * viewModel.appScale) {
                 Image(systemName: item.systemImage)
+                    .font(.system(size: 14 * viewModel.appScale))
                     .foregroundColor(.accentColor)
-                    .frame(width: 18)
+                    .frame(width: 18 * viewModel.appScale)
                 Text(item.name)
-                    .font(.body)
+                    .font(.system(size: 13 * viewModel.appScale))
                 Spacer()
             }
-            .padding(.vertical, 3)
-            .padding(.horizontal, 6)
+            .padding(.vertical, max(2, 4 * viewModel.appScale))
+            .padding(.horizontal, max(4, 6 * viewModel.appScale))
             .background(
                 isTargeted
                     ? Color.accentColor.opacity(0.35)

@@ -106,13 +106,13 @@ public final class ExplorerViewModel: ObservableObject {
 
     public func increaseAppScale() {
         withAnimation(.easeInOut(duration: 0.15)) {
-            appScale = min(appScale + 0.08, 1.6)
+            appScale = min(round((appScale + 0.1) * 10) / 10, 1.8)
         }
     }
 
     public func decreaseAppScale() {
         withAnimation(.easeInOut(duration: 0.15)) {
-            appScale = max(appScale - 0.08, 0.75)
+            appScale = max(round((appScale - 0.1) * 10) / 10, 0.7)
         }
     }
 
@@ -120,6 +120,16 @@ public final class ExplorerViewModel: ObservableObject {
         withAnimation(.easeInOut(duration: 0.15)) {
             iconScale = 1.0
             appScale = 1.0
+        }
+    }
+
+    public var controlSize: ControlSize {
+        if appScale >= 1.2 {
+            return .large
+        } else if appScale <= 0.85 {
+            return .small
+        } else {
+            return .regular
         }
     }
 
