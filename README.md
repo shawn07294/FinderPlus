@@ -4,7 +4,7 @@ A native macOS file explorer built with Swift and SwiftUI, with scoped live sear
 
 ## Downloads
 
-- [Prebuilt macOS app (Apple Silicon)](FinderPlus-macOS-arm64.zip)
+- [Prebuilt macOS app (Apple Silicon)](releases/FinderPlus-macOS-arm64.zip)
 - [Source project](FinderPlus-source.zip)
 
 The prebuilt app is ad hoc signed and not notarized, so macOS may ask you to confirm opening it. It targets Apple Silicon (arm64). The source project can be built for Intel or Apple Silicon.
