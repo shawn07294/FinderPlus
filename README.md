@@ -2,6 +2,14 @@
 
 A native macOS file explorer built with Swift and SwiftUI, with scoped live search, list and icon views, Quick Look previews, drag and drop, and common file operations.
 
+## v1.2.0M
+
+- Generates rich thumbnails for the entire current folder when it is opened.
+- Stores generated thumbnails in `/Applications/FinderPlus.app/Contents/PREVIEWS`.
+- Reuses cached previews when available and regenerates them when they have expired or no longer match the file metadata.
+- Automatically removes preview files older than 3 days so they can be generated again later.
+- Limits background thumbnail generation to four concurrent Quick Look jobs.
+
 ## Downloads
 
 - [Prebuilt macOS app (Apple Silicon)](releases/FinderPlus-macOS-arm64.zip)

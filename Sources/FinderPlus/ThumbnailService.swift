@@ -11,37 +11,34 @@ public final class ThumbnailService: @unchecked Sendable {
     private let fileManager = FileManager.default
     private let cacheDirectoryURL: URL
 
-    // Extensions that benefit from prioritized rich thumbnail previews
     private let previewExtensions: Set<String> = [
-        // Images
         "jpg", "jpeg", "png", "heic", "heif", "gif", "tiff", "tif", "webp", "bmp", "ico", "svg", "raw", "cr2", "nef", "arw", "dng",
-        // Documents & PDFs
         "pdf", "pages", "numbers", "key", "ai", "psd",
-        // Videos
         "mov", "mp4", "m4v", "mkv", "avi"
     ]
 
     private init() {
         memoryCache.countLimit = 600
 
-        // Disk cache directory: ~/Library/Caches/FinderPlus/Thumbnails
-        let paths = fileManager.urls(for: .cachesDirectory, in: .userDomainMask)
-        let baseCache = paths.first ?? URL(fileURLWithPath: NSTemporaryDirectory())
-        self.cacheDirectoryURL = baseCache.appendingPathComponent("FinderPlus/Thumbnails", isDirectory: true)
+        // v1.2.0M preview storage. The released app is installed at
+        // /Applications/FinderPlus.app, so generated previews live in
+        // /Applications/FinderPlus.app/Contents/PREVIEWS.
+        self.cacheDirectoryURL = URL(fileURLWithPath: "/Applications/FinderPlus.app/Contents/PREVIEWS", isDirectory: true)
 
-        try? fileManager.createDirectory(at: cacheDirectoryURL, withIntermediateDirectories: true)
+        do {
+            try fileManager.createDirectory(at: cacheDirectoryURL, withIntermediateDirectories: true)
+        } catch {
+            print("[FinderPlus] Unable to create PREVIEWS directory: \(error)")
+        }
 
-        // Automatically clean preview files older than a week (7 days) on launch
-        cleanOldPreviews(maxAgeInDays: 7)
+        cleanOldPreviews(maxAgeInDays: 3)
     }
 
-    /// Whether this file item should be prioritized for rich thumbnail generation
     public func isPreviewEligible(item: FileItem) -> Bool {
         guard !item.isDirectory else { return false }
-        return previewExtensions.contains(item.fileExtension)
+        return previewExtensions.contains(item.fileExtension.lowercased())
     }
 
-    /// Retrieve cached thumbnail or standard system icon immediately
     public func cachedThumbnail(for item: FileItem, size: CGFloat = 128) -> NSImage? {
         let keyString = diskKey(for: item, size: size)
         if let memoryImg = memoryCache.object(forKey: keyString as NSString) {
@@ -55,7 +52,6 @@ public final class ThumbnailService: @unchecked Sendable {
         return nil
     }
 
-    /// Prioritized async thumbnail loader: returns cached image or generates one asynchronously
     public func loadThumbnail(
         for item: FileItem,
         targetSize: CGFloat = 128,
@@ -63,17 +59,14 @@ public final class ThumbnailService: @unchecked Sendable {
     ) {
         let keyString = diskKey(for: item, size: targetSize)
 
-        // 1. Instant Memory Cache check
         if let inMemory = memoryCache.object(forKey: keyString as NSString) {
             completion(inMemory)
             return
         }
 
-        // 2. High-priority asynchronous background task
         Task.detached(priority: .userInitiated) { [weak self] in
             guard let self = self else { return }
 
-            // Check Disk Cache
             let diskURL = self.cacheDirectoryURL.appendingPathComponent(keyString)
             if let data = try? Data(contentsOf: diskURL), let diskImg = NSImage(data: data) {
                 self.memoryCache.setObject(diskImg, forKey: keyString as NSString)
@@ -81,7 +74,6 @@ public final class ThumbnailService: @unchecked Sendable {
                 return
             }
 
-            // 3. Generate high-resolution thumbnail via QLThumbnailGenerator
             let request = QLThumbnailGenerator.Request(
                 fileAt: item.url,
                 size: CGSize(width: targetSize, height: targetSize),
@@ -102,6 +94,61 @@ public final class ThumbnailService: @unchecked Sendable {
         }
     }
 
+    /// Pre-generate thumbnails for all eligible files in the current folder.
+    /// Four Quick Look jobs are allowed at once to avoid overwhelming the UI or disk.
+    public func preloadThumbnails(for items: [FileItem], targetSize: CGFloat = 128) {
+        let eligibleItems = items.filter { isPreviewEligible(item: $0) }
+        guard !eligibleItems.isEmpty else { return }
+
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self = self else { return }
+            let concurrency = 4
+            var index = 0
+
+            while index < eligibleItems.count {
+                if Task.isCancelled { return }
+                let end = min(index + concurrency, eligibleItems.count)
+                let batch = Array(eligibleItems[index..<end])
+
+                await withTaskGroup(of: Void.self) { group in
+                    for item in batch {
+                        group.addTask {
+                            await self.preloadSingleThumbnail(item: item, targetSize: targetSize)
+                        }
+                    }
+                }
+                index = end
+            }
+        }
+    }
+
+    private func preloadSingleThumbnail(item: FileItem, targetSize: CGFloat) async {
+        let keyString = diskKey(for: item, size: targetSize)
+        if memoryCache.object(forKey: keyString as NSString) != nil { return }
+
+        let diskURL = cacheDirectoryURL.appendingPathComponent(keyString)
+        if let data = try? Data(contentsOf: diskURL), let image = NSImage(data: data) {
+            memoryCache.setObject(image, forKey: keyString as NSString)
+            return
+        }
+
+        let request = QLThumbnailGenerator.Request(
+            fileAt: item.url,
+            size: CGSize(width: targetSize, height: targetSize),
+            scale: 2.0,
+            representationTypes: .thumbnail
+        )
+
+        do {
+            let thumbnail = try await QLThumbnailGenerator.shared.generateBestRepresentation(for: request)
+            let image = thumbnail.nsImage
+            memoryCache.setObject(image, forKey: keyString as NSString)
+            saveThumbnailToDisk(image: image, fileURL: diskURL)
+        } catch {
+            // A failed preview must not prevent the remaining folder from loading.
+        }
+    }
+
     private func saveThumbnailToDisk(image: NSImage, fileURL: URL) {
         guard let tiffData = image.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiffData),
@@ -118,10 +165,9 @@ public final class ThumbnailService: @unchecked Sendable {
         return hash.map { String(format: "%02x", $0) }.joined() + ".thumb"
     }
 
-    // MARK: - Weekly Cache Cleanup (Delete preview files older than a week)
+    // MARK: - Three-Day Cache Cleanup
 
-    /// Deletes all cached preview files older than `maxAgeInDays` (default 7 days)
-    public func cleanOldPreviews(maxAgeInDays: Int = 7) {
+    public func cleanOldPreviews(maxAgeInDays: Int = 3) {
         Task.detached(priority: .background) { [weak self] in
             guard let self = self else { return }
             let cutoffDate = Date().addingTimeInterval(-Double(maxAgeInDays * 86400))
@@ -138,13 +184,12 @@ public final class ThumbnailService: @unchecked Sendable {
 
             while let fileURL = enumerator.nextObject() as? URL {
                 if let values = try? fileURL.resourceValues(forKeys: Set(keys)),
-                   let modDate = values.contentModificationDate {
-                    if modDate < cutoffDate {
-                        let size = Int64(values.fileSize ?? 0)
-                        if (try? self.fileManager.removeItem(at: fileURL)) != nil {
-                            deletedCount += 1
-                            reclaimedBytes += size
-                        }
+                   let modDate = values.contentModificationDate,
+                   modDate < cutoffDate {
+                    let size = Int64(values.fileSize ?? 0)
+                    if (try? self.fileManager.removeItem(at: fileURL)) != nil {
+                        deletedCount += 1
+                        reclaimedBytes += size
                     }
                 }
             }
@@ -155,8 +200,6 @@ public final class ThumbnailService: @unchecked Sendable {
             }
         }
     }
-
-    // MARK: - Cache Size Statistics
 
     public struct CacheStatistics: Sendable {
         public let fileCount: Int
@@ -172,7 +215,6 @@ public final class ThumbnailService: @unchecked Sendable {
         }
     }
 
-    /// Calculates current disk cache size and item count
     public func getCacheStatistics() -> CacheStatistics {
         let keys: [URLResourceKey] = [.fileSizeKey]
         guard let files = try? fileManager.contentsOfDirectory(
@@ -185,15 +227,13 @@ public final class ThumbnailService: @unchecked Sendable {
 
         var count = 0
         var total: Int64 = 0
-
         for file in files {
-            if let vals = try? file.resourceValues(forKeys: Set(keys)), let s = vals.fileSize {
+            if let vals = try? file.resourceValues(forKeys: Set(keys)), let size = vals.fileSize {
                 count += 1
-                total += Int64(s)
+                total += Int64(size)
             }
         }
-
-        let avg = count > 0 ? (total / Int64(count)) : 0
+        let avg = count > 0 ? total / Int64(count) : 0
         return CacheStatistics(fileCount: count, totalBytes: total, averageFileBytes: avg)
     }
 }

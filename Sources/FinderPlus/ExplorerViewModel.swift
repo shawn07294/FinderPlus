@@ -33,7 +33,6 @@ public enum SortOrder {
 
 @MainActor
 public final class ExplorerViewModel: ObservableObject {
-    // Navigation State
     @Published public var currentDirectory: URL {
         didSet {
             loadCurrentDirectory()
@@ -45,7 +44,6 @@ public final class ExplorerViewModel: ObservableObject {
     @Published public private(set) var history: [URL] = []
     @Published public private(set) var historyIndex: Int = -1
 
-    // View & Layout
     @Published public var viewMode: ViewMode = .list
     @Published public var sortField: SortField = .name {
         didSet { updateDisplayedItems() }
@@ -54,13 +52,11 @@ public final class ExplorerViewModel: ObservableObject {
         didSet { updateDisplayedItems() }
     }
 
-    // Directory Content
     @Published public private(set) var folderItems: [FileItem] = [] {
         didSet { updateDisplayedItems() }
     }
     @Published public var selectedItemIDs: Set<String> = []
 
-    // Search
     @Published public var searchText: String = "" {
         didSet {
             if searchText != oldValue {
@@ -85,10 +81,8 @@ public final class ExplorerViewModel: ObservableObject {
     @Published public private(set) var scannedCount: Int = 0
     @Published public var showFilterShelf: Bool = false
 
-    // Cached sorted displayed items - never re-sorts on selection or drag changes!
     @Published public private(set) var displayedItems: [FileItem] = []
 
-    // Scaling States
     @Published public var iconScale: Double = 1.0
     @Published public var appScale: Double = 1.0
 
@@ -133,13 +127,8 @@ public final class ExplorerViewModel: ObservableObject {
         }
     }
 
-    // Quick Look
     @Published public var previewURL: URL? = nil
-
-    // Drag State
     @Published public var draggingItemID: String? = nil
-
-    // Status bar stats
     @Published public private(set) var volumeFreeSpaceString: String = ""
 
     private let searchEngine = SearchEngine()
@@ -201,7 +190,6 @@ public final class ExplorerViewModel: ObservableObject {
 
     private func sortItems(_ items: [FileItem]) -> [FileItem] {
         items.sorted { lhs, rhs in
-            // Folders usually on top in Finder-like style
             if lhs.isDirectory != rhs.isDirectory {
                 return lhs.isDirectory && !rhs.isDirectory
             }
@@ -226,13 +214,8 @@ public final class ExplorerViewModel: ObservableObject {
 
     // MARK: - Navigation
 
-    public var canGoBack: Bool {
-        historyIndex > 0
-    }
-
-    public var canGoForward: Bool {
-        historyIndex < history.count - 1
-    }
+    public var canGoBack: Bool { historyIndex > 0 }
+    public var canGoForward: Bool { historyIndex < history.count - 1 }
 
     public func goBack() {
         guard canGoBack else { return }
@@ -302,6 +285,10 @@ public final class ExplorerViewModel: ObservableObject {
         )) ?? []
 
         self.folderItems = urls.map { FileItem(url: $0) }
+
+        // v1.2.0M: immediately begin generating rich previews for the entire folder.
+        ThumbnailService.shared.preloadThumbnails(for: self.folderItems, targetSize: 128)
+
         updateVolumeSpace()
     }
 
@@ -403,9 +390,7 @@ public final class ExplorerViewModel: ObservableObject {
             }
         }
         loadCurrentDirectory()
-        if isSearchActive {
-            triggerSearch()
-        }
+        if isSearchActive { triggerSearch() }
     }
 
     public func createNewFolder(name: String = "untitled folder") {
@@ -436,9 +421,7 @@ public final class ExplorerViewModel: ObservableObject {
         do {
             try FileManager.default.moveItem(at: item.url, to: targetURL)
             loadCurrentDirectory()
-            if isSearchActive {
-                triggerSearch()
-            }
+            if isSearchActive { triggerSearch() }
         } catch {
             print("Error renaming file: \(error)")
         }
@@ -488,18 +471,11 @@ public final class ExplorerViewModel: ObservableObject {
 
         for sourceURL in urls {
             let sourceStandardized = sourceURL.standardizedFileURL
-            // Don't move a file to its current parent folder
-            if sourceStandardized.deletingLastPathComponent() == targetDirStandardized {
-                continue
-            }
-            // Prevent dropping a folder into itself or any of its subfolders
-            if targetDirStandardized.path == sourceStandardized.path || targetDirStandardized.path.hasPrefix(sourceStandardized.path + "/") {
-                continue
-            }
+            if sourceStandardized.deletingLastPathComponent() == targetDirStandardized { continue }
+            if targetDirStandardized.path == sourceStandardized.path || targetDirStandardized.path.hasPrefix(sourceStandardized.path + "/") { continue }
 
             var destURL = targetDirStandardized.appendingPathComponent(sourceStandardized.lastPathComponent)
 
-            // Resolve name collision if file/folder already exists at destination
             if FileManager.default.fileExists(atPath: destURL.path) {
                 let ext = destURL.pathExtension
                 let base = destURL.deletingPathExtension().lastPathComponent
@@ -515,7 +491,6 @@ public final class ExplorerViewModel: ObservableObject {
                 try FileManager.default.moveItem(at: sourceStandardized, to: destURL)
                 didMoveAny = true
             } catch {
-                // If cross-volume move fails, try copy then remove
                 do {
                     try FileManager.default.copyItem(at: sourceStandardized, to: destURL)
                     try? FileManager.default.removeItem(at: sourceStandardized)
@@ -529,21 +504,18 @@ public final class ExplorerViewModel: ObservableObject {
         draggingItemID = nil
         if didMoveAny {
             loadCurrentDirectory()
-            if isSearchActive {
-                triggerSearch()
-            }
+            if isSearchActive { triggerSearch() }
         }
 
         return didMoveAny
     }
 
     private func updateVolumeSpace() {
-        if let values = try? currentDirectory.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]) {
-            if let free = values.volumeAvailableCapacityForImportantUsage {
-                let formatted = ByteCountFormatter.string(fromByteCount: free, countStyle: .file)
-                self.volumeFreeSpaceString = "\(formatted) available"
-                return
-            }
+        if let values = try? currentDirectory.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]),
+           let free = values.volumeAvailableCapacityForImportantUsage {
+            let formatted = ByteCountFormatter.string(fromByteCount: free, countStyle: .file)
+            self.volumeFreeSpaceString = "\(formatted) available"
+            return
         }
         self.volumeFreeSpaceString = ""
     }
