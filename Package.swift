@@ -17,7 +17,8 @@ let package = Package(
         .executableTarget(
             name: "FinderPlus",
             dependencies: [],
-            path: "Sources/FinderPlus"
+            path: "Sources/FinderPlus",
+            exclude: ["Info.plist"]
         )
     ]
 )

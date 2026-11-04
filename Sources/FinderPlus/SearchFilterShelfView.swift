@@ -29,25 +29,41 @@ public struct SearchFilterShelfView: View {
                     .frame(height: 18)
 
                 // Search Target (Name vs Content)
-                Picker("Target", selection: $viewModel.searchParameters.searchTarget) {
-                    ForEach(SearchTarget.allCases) { target in
-                        Text(target.rawValue).tag(target)
+                HStack(spacing: 8) {
+                    Text("Target:")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .fixedSize()
+
+                    Picker("Target", selection: $viewModel.searchParameters.searchTarget) {
+                        ForEach(SearchTarget.allCases) { target in
+                            Text(target.rawValue).tag(target)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(minWidth: 150)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 140)
 
                 Divider()
                     .frame(height: 18)
 
                 // Match Mode
-                Picker("Mode", selection: $viewModel.searchParameters.matchMode) {
-                    ForEach(MatchMode.allCases) { mode in
-                        Text(mode.rawValue).tag(mode)
+                HStack(spacing: 8) {
+                    Text("Mode:")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .fixedSize()
+
+                    Picker("Mode", selection: $viewModel.searchParameters.matchMode) {
+                        ForEach(MatchMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(minWidth: 210)
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 190)
 
                 Spacer()
 
@@ -135,13 +151,19 @@ public struct SearchFilterShelfView: View {
 
                 // Progress & Count Indicator
                 if viewModel.isSearching {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .scaleEffect(0.6)
-                            .frame(width: 14, height: 14)
-                        Text("Scanned \(viewModel.scannedCount) items...")
-                            .font(.caption)
+                    HStack(spacing: 8) {
+                        ProgressView(value: viewModel.searchPercentage, total: 100)
+                            .progressViewStyle(.linear)
+                            .frame(width: 80)
+
+                        Text("Searching... \(Int(round(viewModel.searchPercentage)))%")
+                            .font(.caption.monospacedDigit().weight(.medium))
+                            .foregroundColor(.accentColor)
+
+                        Text("(\(viewModel.scannedCount) scanned)")
+                            .font(.caption2)
                             .foregroundColor(.secondary)
+
                         Button("Cancel") {
                             viewModel.cancelSearch()
                         }

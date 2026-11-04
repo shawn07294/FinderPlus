@@ -1,42 +1,96 @@
-# FinderPlus
+# FinderPlus 🗂️
 
-A native macOS file explorer built with Swift and SwiftUI, with scoped live search, list and icon views, Quick Look previews, drag and drop, and common file operations.
+A native, Finder-inspired macOS 27 file explorer crafted in Swift and SwiftUI, featuring an enhanced, scoped search engine.
 
-## v1.2.0M
+---
 
-- Generates rich thumbnails for the entire current folder when it is opened.
-- Stores generated thumbnails in `/Applications/FinderPlus.app/Contents/PREVIEWS`.
-- Reuses cached previews when available and regenerates them when they expire or no longer match the file metadata.
-- Automatically removes preview files older than 3 days so they can be generated again when needed.
-- Limits background thumbnail generation to four concurrent Quick Look jobs.
+## Highlights & Features
 
-## Download and install
+### 🔍 Enhanced Search Experience
+- **Default Scoped Search**: By default, search queries inspect **only the selected folder**, keeping results immediate, focused, and free from drive-wide noise.
+- **Search Scope Selector**: Instantly switch scope with one click between:
+  - **This Folder** (Selected directory only)
+  - **Subfolders** (Selected directory + recursive subdirectories)
+  - **This Mac** (User files & applications across the Mac)
+- **Search Target**: Switch between **File Name** and **File Content** scanning.
+- **Match Modes**: Support for **Contains**, **Exact Match**, and **Regular Expressions (Regex)**.
+- **Precision Filters**:
+  - **Kind**: Filter by All, Folders, Documents, Images, Audio, Movies, Code, or Archives.
+  - **Date Modified**: Any Date, Today, Past 7 Days, Past 30 Days, or Past Year.
+  - **File Size**: Any Size, < 1 MB, 1–100 MB, or > 100 MB.
+- **Case Sensitivity & Hidden Files**: Independent toggles for case sensitivity (`Aa`) and hidden dotfiles (`eye`).
+- **Zero-Dependency Live Engine**: Multi-threaded Swift Concurrency (`AsyncStream` + `TaskGroup`) direct filesystem crawler that never misses unindexed files, git repositories, or developer files.
 
-**For most users, download the app ZIP from the [FinderPlus Releases page](https://github.com/shawn07294/FinderPlus/releases).** Choose the latest macOS release and download the `FinderPlus-<version>-macOS-arm64.zip` asset.
+### 🖥️ Authentic Finder Look & Feel
+- **View Modes**:
+  - **List View**: Sortable tabular columns (Name with system file icons, Date Modified, Size, Kind).
+  - **Icon View**: Clean grid layout with system thumbnails and selection highlights.
+- **Sidebar**:
+  - **Favorites**: Quick access to Home, Desktop, Documents, Downloads, and Applications.
+  - **Locations**: Quick access to Macintosh HD and connected Volumes.
+- **Clickable Breadcrumb Path Bar**: Bottom path navigation showing every parent folder component with instant click-to-navigate.
+- **Status Bar**: Live item counts, selection metrics, and available disk capacity.
+- **Quick Look Integration**: Press **Spacebar** or choose Quick Look from the context menu to preview files natively.
+- **Drag and Drop**:
+  - Drag files or folders from FinderPlus into any folder, sidebar favorite, or external app.
+  - Drop files or folders from native Finder, desktop, or other apps directly into FinderPlus.
+  - Drop files directly onto any folder row/icon (with visual highlight) to move items inside it.
+  - Drop files onto Sidebar favorites (Home, Documents, Downloads, etc.) to quickly organize files.
+- **File Operations**:
+  - Double-click to open in default macOS applications (`NSWorkspace`).
+  - Right-click context menu: Open, Quick Look, Reveal in Finder, Duplicate, Copy Path, Rename, and Move to Trash.
+  - New Folder button and keyboard shortcut.
 
-1. Extract the ZIP file.
-2. Move `FinderPlus.app` into your `/Applications` folder.
-3. Open FinderPlus.
+---
 
-You do not need Swift, Xcode, Git, or the source code to use the prebuilt app. The app is currently built for Apple Silicon Macs (arm64) and requires macOS 14 or later.
+## Requirements
 
-The distributed app is not notarized by Apple, so macOS may show a security warning the first time you open it. Only install releases from this official repository.
+- **macOS**: macOS 14.0+ (Tested & optimized for macOS 27)
+- **Swift**: Swift 5.9+ / Swift 6.4
 
-## Source code and development
+---
 
-The source project is available in this repository and in the optional `FinderPlus-source.zip` archive. To build it yourself, use macOS 14 or later and Swift 5.9 or later (included with Xcode or the Xcode Command Line Tools):
+## Quick Start
 
-```sh
+### Running in Development Mode
+```bash
+cd /Users/shawnlee/.gemini/antigravity/scratch/FinderPlus
 swift run
 ```
 
-To package a standalone app:
-
-```sh
+### Packaging into a Standalone `.app`
+Run the bundling script to generate `build/FinderPlus.app`:
+```bash
 ./bundle.sh
-open build/FinderPlus.app
+open ./build/FinderPlus.app
 ```
 
-GitHub Actions builds the Apple Silicon app and attaches the ZIP to published releases automatically. You can also manually run the **Build macOS Release App** workflow from the Actions tab for an existing release tag.
+### Opening in Xcode
+You can open the project directly in Xcode:
+```bash
+open FinderPlus.xcodeproj
+```
+Or double-click `FinderPlus.xcodeproj` in Finder. Press **⌘ + R** in Xcode to build and run!
 
-FinderPlus is distributed under GPL-3.0; see [LICENSE](LICENSE).
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+| :--- | :--- |
+| `Space` | Quick Look preview for selected file |
+| `⌘ + F` | Focus Search field & reveal filter shelf |
+| `⌘ + +` / `⌘ + =` | **Increase scale of file icons** |
+| `⌘ + -` | **Decrease scale of file icons** |
+| `⌘ + ]` | **Increase scale of the app** |
+| `⌘ + [` | **Decrease scale of the app** |
+| `⌘ + 0` | Reset icon and app scale to 100% |
+| `⌘ + ↑` | Navigate up to parent folder |
+| `⌘ + ↓` | Open selected folder or launch file |
+| `⌘ + ←` | Go Back in history |
+| `⌘ + →` | Go Forward in history |
+| `⌘ + ⇧ + N` | Create New Folder |
+| `⌘ + ⇧ + H` | Go to Home directory |
+| `⌘ + ⇧ + A` | Go to Applications |
+| `⌘ + ⇧ + D` | Go to Desktop |
+| `⌘ + ⇧ + O` | Go to Documents |

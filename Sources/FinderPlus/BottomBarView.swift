@@ -29,7 +29,21 @@ public struct BottomBarView: View {
 
                 // Status Bar Stats
                 HStack(spacing: 8 * viewModel.appScale) {
-                    if viewModel.isSearchActive {
+                    if let msg = viewModel.statusMessage {
+                        Text(msg)
+                            .font(.system(size: 11 * viewModel.appScale, weight: .medium))
+                            .foregroundColor(.accentColor)
+                    } else if viewModel.isSearching {
+                        ProgressView(value: viewModel.searchPercentage, total: 100)
+                            .progressViewStyle(.linear)
+                            .frame(width: 50)
+                        Text("Searching... \(Int(round(viewModel.searchPercentage)))%")
+                            .font(.system(size: 11 * viewModel.appScale, weight: .medium).monospacedDigit())
+                            .foregroundColor(.accentColor)
+                        Text("(\(viewModel.searchResults.count) found)")
+                            .font(.system(size: 11 * viewModel.appScale))
+                            .foregroundColor(.secondary)
+                    } else if viewModel.isSearchActive {
                         Text("\(viewModel.searchResults.count) \(viewModel.searchResults.count == 1 ? "item" : "items")")
                             .font(.system(size: 11 * viewModel.appScale))
                             .foregroundColor(.secondary)

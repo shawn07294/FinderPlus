@@ -22,17 +22,34 @@ public struct FileThumbnailView: View {
                 Image(nsImage: item.icon)
                     .resizable()
                     .scaledToFit()
-                    .task(id: item.id) {
-                        if ThumbnailService.shared.isPreviewEligible(item: item) {
-                            ThumbnailService.shared.loadThumbnail(for: item, targetSize: size) { thumb in
-                                Task { @MainActor in
-                                    self.displayImage = thumb
-                                }
-                            }
-                        }
-                    }
             }
         }
         .frame(width: size, height: size)
+        .task(id: "\(item.id)_\(Int(size))") {
+            loadThumbnail()
+        }
+        .onChange(of: item.id) { _, _ in
+            loadThumbnail()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .previewThumbnailsDidUpdate)) { _ in
+            loadThumbnail()
+        }
+    }
+
+    private func loadThumbnail() {
+        if let cached = ThumbnailService.shared.cachedThumbnail(for: item, size: size) {
+            self.displayImage = cached
+            return
+        }
+
+        if ThumbnailService.shared.isPreviewEligible(item: item) {
+            ThumbnailService.shared.loadThumbnail(for: item, targetSize: size) { thumb in
+                Task { @MainActor in
+                    self.displayImage = thumb
+                }
+            }
+        } else {
+            self.displayImage = nil
+        }
     }
 }

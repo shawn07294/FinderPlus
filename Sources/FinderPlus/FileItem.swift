@@ -25,6 +25,7 @@ public struct FileItem: Identifiable, Hashable, Sendable {
     public let isPackage: Bool
     public let isHidden: Bool
     public let size: Int64
+    public let dateCreated: Date?
     public let dateModified: Date?
     public let kindDescription: String
     public let fileExtension: String
@@ -46,6 +47,7 @@ public struct FileItem: Identifiable, Hashable, Sendable {
             .isPackageKey,
             .isHiddenKey,
             .fileSizeKey,
+            .creationDateKey,
             .contentModificationDateKey,
             .contentTypeKey,
             .localizedTypeDescriptionKey
@@ -57,6 +59,7 @@ public struct FileItem: Identifiable, Hashable, Sendable {
         self.isPackage = isPkg
         self.isHidden = values?.isHidden ?? url.lastPathComponent.hasPrefix(".")
         self.size = Int64(values?.fileSize ?? 0)
+        self.dateCreated = values?.creationDate
         self.dateModified = values?.contentModificationDate
 
         if let desc = values?.localizedTypeDescription {
@@ -79,6 +82,7 @@ public struct FileItem: Identifiable, Hashable, Sendable {
         isPackage: Bool,
         isHidden: Bool,
         size: Int64,
+        dateCreated: Date? = nil,
         dateModified: Date?,
         kindDescription: String
     ) {
@@ -89,6 +93,7 @@ public struct FileItem: Identifiable, Hashable, Sendable {
         self.isPackage = isPackage
         self.isHidden = isHidden
         self.size = size
+        self.dateCreated = dateCreated
         self.dateModified = dateModified
         self.kindDescription = kindDescription
     }

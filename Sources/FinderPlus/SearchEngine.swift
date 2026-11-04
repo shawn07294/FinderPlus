@@ -4,6 +4,7 @@ public actor SearchEngine {
     public struct SearchProgress: Sendable {
         public let scannedCount: Int
         public let matchesCount: Int
+        public let percentage: Double
         public let isFinished: Bool
     }
 
@@ -40,7 +41,8 @@ public actor SearchEngine {
 
                 let isRecursive = parameters.scope != .currentFolderOnly
 
-                for root in roots {
+                for rootIndex in 0..<roots.count {
+                    let root = roots[rootIndex]
                     if Task.isCancelled { break }
 
                     if !isRecursive {
@@ -66,6 +68,8 @@ public actor SearchEngine {
                             options: options
                         )) ?? []
 
+                        let totalItems = max(1, children.count)
+
                         for url in children {
                             if Task.isCancelled { break }
                             scanned += 1
@@ -80,8 +84,9 @@ public actor SearchEngine {
                                 continuation.yield(item)
                             }
 
-                            if scanned % 50 == 0 {
-                                onProgress?(SearchProgress(scannedCount: scanned, matchesCount: matches, isFinished: false))
+                            let pct = min(99.0, (Double(scanned) / Double(totalItems)) * 100.0)
+                            if scanned % 10 == 0 || scanned == totalItems {
+                                onProgress?(SearchProgress(scannedCount: scanned, matchesCount: matches, percentage: pct, isFinished: false))
                             }
                         }
                     } else {
@@ -101,40 +106,62 @@ public actor SearchEngine {
                             options.insert(.skipsHiddenFiles)
                         }
 
-                        guard let enumerator = FileManager.default.enumerator(
+                        // Inspect top level entries for accurate proportional progress
+                        let topLevel = (try? FileManager.default.contentsOfDirectory(
                             at: root,
-                            includingPropertiesForKeys: resourceKeys,
-                            options: options,
-                            errorHandler: { _, _ in true }
-                        ) else { continue }
+                            includingPropertiesForKeys: [.isDirectoryKey],
+                            options: options
+                        )) ?? [root]
 
-                        while let url = enumerator.nextObject() as? URL {
+                        let topCount = max(1, topLevel.count)
+                        let rootSlice = 100.0 / Double(roots.count)
+                        let baseRootPct = Double(rootIndex) * rootSlice
+
+                        for (topIdx, topURL) in topLevel.enumerated() {
                             if Task.isCancelled { break }
-                            scanned += 1
 
-                            // Skip deep recursion inside packages (e.g. .app bundles) unless requested
-                            if let vals = try? url.resourceValues(forKeys: [.isPackageKey]), vals.isPackage == true {
-                                enumerator.skipDescendants()
-                            }
+                            let branchSlice = rootSlice / Double(topCount)
+                            let baseBranchPct = baseRootPct + (Double(topIdx) * branchSlice)
 
-                            if let item = self.evaluate(
-                                url: url,
-                                query: query,
-                                regex: regex,
-                                parameters: parameters
-                            ) {
-                                matches += 1
-                                continuation.yield(item)
-                            }
+                            guard let enumerator = FileManager.default.enumerator(
+                                at: topURL,
+                                includingPropertiesForKeys: resourceKeys,
+                                options: options,
+                                errorHandler: { _, _ in true }
+                            ) else { continue }
 
-                            if scanned % 100 == 0 {
-                                onProgress?(SearchProgress(scannedCount: scanned, matchesCount: matches, isFinished: false))
+                            var branchScanned = 0
+
+                            while let url = enumerator.nextObject() as? URL {
+                                if Task.isCancelled { break }
+                                scanned += 1
+                                branchScanned += 1
+
+                                if let vals = try? url.resourceValues(forKeys: [.isPackageKey]), vals.isPackage == true {
+                                    enumerator.skipDescendants()
+                                }
+
+                                if let item = self.evaluate(
+                                    url: url,
+                                    query: query,
+                                    regex: regex,
+                                    parameters: parameters
+                                ) {
+                                    matches += 1
+                                    continuation.yield(item)
+                                }
+
+                                if scanned % 25 == 0 {
+                                    let branchProgress = min(branchSlice * 0.95, (Double(branchScanned) / Double(branchScanned + 60)) * branchSlice)
+                                    let currentPct = min(99.0, baseBranchPct + branchProgress)
+                                    onProgress?(SearchProgress(scannedCount: scanned, matchesCount: matches, percentage: currentPct, isFinished: false))
+                                }
                             }
                         }
                     }
                 }
 
-                onProgress?(SearchProgress(scannedCount: scanned, matchesCount: matches, isFinished: true))
+                onProgress?(SearchProgress(scannedCount: scanned, matchesCount: matches, percentage: 100.0, isFinished: true))
                 continuation.finish()
             }
 

@@ -3,6 +3,20 @@ import AppKit
 
 public struct FileIconView: View {
     @ObservedObject var viewModel: ExplorerViewModel
+    @State private var itemFrames: [String: CGRect] = [:]
+    @State private var rubberBandStart: CGPoint? = nil
+    @State private var rubberBandCurrent: CGPoint? = nil
+    @State private var preRubberBandSelection: Set<String> = []
+
+    private var rubberBandRect: CGRect? {
+        guard let start = rubberBandStart, let current = rubberBandCurrent else { return nil }
+        return CGRect(
+            x: min(start.x, current.x),
+            y: min(start.y, current.y),
+            width: abs(current.x - start.x),
+            height: abs(current.y - start.y)
+        )
+    }
 
     private var columns: [GridItem] {
         let minW = 96 * viewModel.iconScale
@@ -14,14 +28,92 @@ public struct FileIconView: View {
 
     public var body: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 20 * viewModel.iconScale) {
-                ForEach(viewModel.displayedItems) { item in
-                    FileIconCell(item: item, viewModel: viewModel)
+            ZStack(alignment: .topLeading) {
+                LazyVGrid(columns: columns, spacing: 20 * viewModel.iconScale) {
+                    ForEach(viewModel.displayedItems) { item in
+                        FileIconCell(item: item, viewModel: viewModel)
+                            .background(
+                                GeometryReader { itemGeo in
+                                    Color.clear.preference(
+                                        key: ItemFramePreferenceKey.self,
+                                        value: [item.id: itemGeo.frame(in: .named("iconScrollContent"))]
+                                    )
+                                }
+                            )
+                    }
+                }
+                .padding(20)
+                .onPreferenceChange(ItemFramePreferenceKey.self) { frames in
+                    itemFrames = frames
+                }
+
+                // Rubber band rectangle overlay
+                if let rect = rubberBandRect, rect.width > 2 || rect.height > 2 {
+                    Rectangle()
+                        .fill(Color.accentColor.opacity(0.12))
+                        .overlay(
+                            Rectangle()
+                                .stroke(Color.accentColor.opacity(0.55), lineWidth: 1)
+                        )
+                        .frame(width: rect.width, height: rect.height)
+                        .offset(x: rect.origin.x, y: rect.origin.y)
+                        .allowsHitTesting(false)
                 }
             }
-            .padding(20)
+            .coordinateSpace(name: "iconScrollContent")
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 4, coordinateSpace: .named("iconScrollContent"))
+                    .onChanged { value in
+                        if rubberBandStart == nil {
+                            rubberBandStart = value.startLocation
+                            let flags = NSEvent.modifierFlags
+                            if flags.contains(.shift) || flags.contains(.command) {
+                                preRubberBandSelection = viewModel.selectedItemIDs
+                            } else {
+                                preRubberBandSelection = []
+                            }
+                        }
+                        rubberBandCurrent = value.location
+
+                        // Update selection based on intersection
+                        if let rect = rubberBandRect {
+                            var newSelection = preRubberBandSelection
+                            for (id, frame) in itemFrames {
+                                if rect.intersects(frame) {
+                                    newSelection.insert(id)
+                                }
+                            }
+                            viewModel.selectedItemIDs = newSelection
+                        }
+                    }
+                    .onEnded { _ in
+                        rubberBandStart = nil
+                        rubberBandCurrent = nil
+                    }
+            )
+            .onTapGesture {
+                let flags = NSEvent.modifierFlags
+                if !flags.contains(.shift) && !flags.contains(.command) {
+                    viewModel.selectedItemIDs.removeAll()
+                }
+            }
         }
         .background(Color(NSColor.textBackgroundColor))
+        .contextMenu {
+            Menu("Load All Previews") {
+                Button("entire drive (including subfolders)") {
+                    viewModel.loadAllPreviews(for: viewModel.currentDirectory, recursive: true)
+                }
+                Button("this folder only") {
+                    viewModel.loadAllPreviews(for: viewModel.currentDirectory, recursive: false)
+                }
+            }
+            Divider()
+            Button("New Folder") {
+                viewModel.createNewFolder()
+            }
+        }
         .onDrop(of: [.fileURL, .url], delegate: FolderCanvasDropDelegate(viewModel: viewModel))
     }
 }
@@ -97,10 +189,11 @@ private struct FileIconCell: View {
         .contentShape(Rectangle())
         .onTapGesture {
             let now = ProcessInfo.processInfo.systemUptime
-            if isSelected && (now - lastClickTime) < NSEvent.doubleClickInterval {
+            let flags = NSEvent.modifierFlags
+            if isSelected && (now - lastClickTime) < NSEvent.doubleClickInterval && !flags.contains(.shift) && !flags.contains(.command) {
                 viewModel.openItem(item)
             } else {
-                viewModel.selectedItemIDs = [item.id]
+                viewModel.selectItem(item, shiftHeld: flags.contains(.shift), cmdHeld: flags.contains(.command))
             }
             lastClickTime = now
         }
@@ -144,6 +237,17 @@ private struct FileIconCell: View {
             }
             Button("Duplicate") {
                 viewModel.duplicateItem(item)
+            }
+            if item.isDirectory {
+                Divider()
+                Menu("Load All Previews") {
+                    Button("entire drive (including subfolders)") {
+                        viewModel.loadAllPreviews(for: item.url, recursive: true)
+                    }
+                    Button("this folder only") {
+                        viewModel.loadAllPreviews(for: item.url, recursive: false)
+                    }
+                }
             }
             Divider()
             Button("Rename...") {

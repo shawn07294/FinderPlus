@@ -3,24 +3,25 @@ import AppKit
 
 @main
 struct FinderPlusApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     var body: some Scene {
-        WindowGroup {
+        WindowGroup(id: "main-window") {
             MainContentView()
+                .frame(minWidth: 700, minHeight: 450)
+        }
+        .windowStyle(.titleBar)
+        .windowToolbarStyle(.unified)
+
+        WindowGroup(for: URL.self) { $url in
+            MainContentView(initialDirectory: url ?? FileManager.default.homeDirectoryForCurrentUser)
                 .frame(minWidth: 700, minHeight: 450)
         }
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
         .commands {
             SidebarCommands()
-
-            CommandGroup(replacing: .newItem) {
-                Button("New Window") {
-                    if let url = Bundle.main.executableURL {
-                        Process.launchedProcess(launchPath: url.path, arguments: [])
-                    }
-                }
-                .keyboardShortcut("n", modifiers: [.command])
-            }
+            FileCommands()
 
             CommandMenu("View") {
                 Button("Zoom In Icons") {
@@ -96,6 +97,13 @@ struct FinderPlusApp: App {
                 }
                 .keyboardShortcut("l", modifiers: [.command, .option])
             }
+
+            CommandMenu("Help") {
+                Button("Keyboard Shortcuts") {
+                    NotificationCenter.default.post(name: .toggleShortcutsSheetTriggered, object: nil)
+                }
+                .keyboardShortcut("/", modifiers: [.command])
+            }
         }
     }
 }
@@ -110,4 +118,70 @@ extension Notification.Name {
     static let increaseAppScaleTriggered = Notification.Name("FinderPlus.increaseAppScale")
     static let decreaseAppScaleTriggered = Notification.Name("FinderPlus.decreaseAppScale")
     static let resetScalesTriggered = Notification.Name("FinderPlus.resetScales")
+    static let toggleShortcutsSheetTriggered = Notification.Name("FinderPlus.toggleShortcutsSheet")
+    static let moveToTrashTriggered = Notification.Name("FinderPlus.moveToTrash")
+    static let previewThumbnailsDidUpdate = Notification.Name("FinderPlus.previewThumbnailsDidUpdate")
+}
+
+struct FileCommands: Commands {
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .newItem) {
+            Button("New Window") {
+                openWindow(id: "main-window")
+            }
+            .keyboardShortcut("n", modifiers: [.command])
+
+            Button("Move to Trash") {
+                NotificationCenter.default.post(name: .moveToTrashTriggered, object: nil)
+            }
+            .keyboardShortcut(.delete, modifiers: [.command])
+        }
+    }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let dockMenu = NSMenu()
+
+        let newWindowItem = NSMenuItem(title: "New Window", action: #selector(openNewWindowAction), keyEquivalent: "")
+        newWindowItem.target = self
+        dockMenu.addItem(newWindowItem)
+        dockMenu.addItem(NSMenuItem.separator())
+
+        let eligibleWindows = NSApp.windows.filter { window in
+            window.canBecomeKey && !window.isMiniaturized && window.isVisible && window.styleMask.contains(.titled)
+        }
+
+        if !eligibleWindows.isEmpty {
+            let sectionHeader = NSMenuItem(title: "Open Windows", action: nil, keyEquivalent: "")
+            sectionHeader.isEnabled = false
+            dockMenu.addItem(sectionHeader)
+
+            for window in eligibleWindows {
+                let title = window.title.isEmpty ? "FinderPlus" : window.title
+                let item = NSMenuItem(title: title, action: #selector(selectWindowAction(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = window
+                if window == NSApp.keyWindow {
+                    item.state = .on
+                }
+                dockMenu.addItem(item)
+            }
+        }
+
+        return dockMenu
+    }
+
+    @objc private func openNewWindowAction() {
+        NSApp.sendAction(#selector(NSDocumentController.newDocument(_:)), to: nil, from: nil)
+    }
+
+    @objc private func selectWindowAction(_ sender: NSMenuItem) {
+        if let window = sender.representedObject as? NSWindow {
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
 }
